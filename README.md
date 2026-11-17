@@ -4,6 +4,11 @@ Five files. In-chat assignee picker + Cursor / Claude hooks. No UI.
 
 https://git.dev.box.net/mtopor/gh-pr-assign-harness
 
+<img width="671" height="172" alt="image" src="https://git.dev.box.net/user-attachments/assets/1f6fb1e4-6c65-4abb-a7ad-0120c8a71fa4" />
+
+<img width="1062" height="439" alt="image" src="https://git.dev.box.net/user-attachments/assets/62bb92bf-4bfd-45b3-884f-3a090ef09def" />
+
+
 ## Install
 
 ```bash
