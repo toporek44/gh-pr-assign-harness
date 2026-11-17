@@ -39,11 +39,17 @@ _cmd_roster() {
     ([ $def[] as $login | ( $team[] | select(.login == $login) ) // {login: $login, name: $login} | . + {recommended: true} ] +
      ([ $team[] | select(.login as $l | ($def | index($l)) | not) ] | sort_by(.name))) as $ordered |
     ([ $def[] as $login | (($team[] | select(.login == $login) | .name) // $login) ] | join(", ")) as $dl |
-    { ask_message: ($msg // "Who should be assigned to this PR?"), defaults: $def,
-      options: [{ id: "__use_defaults__", label: ("Use defaults only: " + $dl + " (Recommended)") }] +
-        [ $ordered[] | { id: .login, label: ((.name // .login) + " (" + .login + ")" + (if .recommended then " (default)" else "" end)) } ]
+    ([{ id: "__use_defaults__", label: ("Use defaults only: " + $dl + " (Recommended)") }] +
+      [ $ordered[] | { id: .login, label: ((.name // .login) + " (" + .login + ")" + (if .recommended then " (default)" else "" end)) } ]) as $opts |
+    { ask_message: ($msg // "Who should be assigned to this PR?"), defaults: $def, options: $opts,
+      teammate_count: ($team | length), option_count: ($opts | length),
+      ask_rule: "Run gh-pr-roster-json before gh pr create. AskQuestion (Cursor) or AskUserQuestion (Claude), allow_multiple true. Include every options[] entry as one choice (same id and label as JSON). Never omit, summarize, or hand-pick a subset. Then gh pr create with --assignee per login (__use_defaults__ means default_assignees only, not passed to gh)."
     }
   ' "$CONFIG"
+}
+
+_roster_ask_rule() {
+  _cmd_roster | jq -r '.ask_rule // empty' 2>/dev/null || true
 }
 
 _cmd_create() {
@@ -78,7 +84,7 @@ _parse_cmd() {
 _is_pr_create() { [[ "$1" =~ gh[[:space:]].*pr[[:space:]]+create ]]; }
 
 _hook_after() {
-  local input="$1" cmd output url host repo num
+  local input="${1-}" cmd output url host repo num
   cmd=$(_parse_cmd "$input")
   _is_pr_create "$cmd" || { echo '{}'; return; }
   [[ "$cmd" =~ --dry-run || "$cmd" =~ --assignee ]] && { echo '{}'; return; }
@@ -98,20 +104,27 @@ _hook_after() {
 }
 
 _hook_ask_cursor() {
-  local input="$1" cmd
+  local input="${1-}" cmd
   cmd=$(_parse_cmd "$input")
   _is_pr_create "$cmd" || { echo '{ "permission": "allow" }'; return; }
   [[ "$cmd" =~ --dry-run ]] && { echo '{ "permission": "allow" }'; return; }
   _should_ask || { echo '{ "permission": "allow" }'; return; }
-  jq -n --arg um "$(_ask_message)" \
-    '{ "permission": "ask", "user_message": $um, "agent_message": "Use gh-pr-roster-json + AskQuestion first." }'
+  local rule
+  rule=$(_roster_ask_rule)
+  jq -n --arg um "$(_ask_message)" --arg rule "$rule" \
+    '{ "permission": "ask", "user_message": $um,
+       "agent_message": ($rule + " List every roster option in AskQuestion (multi).") }'
 }
 
 _hook_ask_claude() {
-  local input="$1" cmd
+  local input="${1-}" cmd
   cmd=$(_parse_cmd "$input")
   _is_pr_create "$cmd" && ! [[ "$cmd" =~ --dry-run ]] && _should_ask || exit 0
-  jq -n --arg reason "$(_ask_message)" \
+  local rule reason
+  rule=$(_roster_ask_rule)
+  reason="$(_ask_message)"
+  [[ -n "$rule" ]] && reason="$reason $rule"
+  jq -n --arg reason "$reason" \
     '{ "hookSpecificOutput": { "hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": $reason } }'
 }
 
@@ -121,7 +134,7 @@ _hook_session_cursor() {
   local roster
   roster=$(_cmd_roster)
   jq -n --argjson r "$roster" \
-    '{ "additional_context": ("Before gh pr create: AskQuestion from gh-pr-roster-json. Roster: " + ($r | tostring)) }'
+    '{ "additional_context": (($r.ask_rule // "Use gh-pr-roster-json.") + " option_count=" + (($r.option_count // 0) | tostring) + ". Full roster JSON: " + ($r | tostring)) }'
 }
 
 _hook_session_claude() {
@@ -129,7 +142,8 @@ _hook_session_claude() {
   [[ "$(jq -r '.agent_ask_before_pr_create // true' "$CONFIG")" == "true" ]] || exit 0
   local roster ctx
   roster=$(_cmd_roster)
-  ctx="Before gh pr create: AskUserQuestion from gh-pr-roster-json. Roster: $roster"
+  ctx=$(jq -n --argjson r "$roster" \
+    '($r.ask_rule // "Use gh-pr-roster-json.") + " option_count=" + (($r.option_count // 0) | tostring) + ". Full roster: " + ($r | tostring)')
   jq -n --arg c "$ctx" \
     '{ "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": $c } }'
 }

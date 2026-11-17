@@ -104,27 +104,44 @@ with open(path, "w") as f:
 PY
 }
 
+PR_ASSIGN_RULE='Before `gh pr create`: run `gh-pr-roster-json`. **AskQuestion** (multi): one choice per every `options[]` row (same `id` + `label`) — list all teammates; never subset or skip. Then `--assignee` per login (`__use_defaults__` / chat defaults = default_assignees only). Config: `~/.config/gh/pr-default-assignees.json`.'
+
 install_rule() {
   mkdir -p "$HOME/.cursor/rules"
-  cat >"$HOME/.cursor/rules/gh-pr-default-assignees.mdc" <<'MDC'
+  cat >"$HOME/.cursor/rules/gh-pr-default-assignees.mdc" <<MDC
 ---
 description: PR assignees via gh-pr-assign-harness
 alwaysApply: true
 ---
-Before `gh pr create`: run `gh-pr-roster-json`, **AskQuestion** (multi), then `--assignee` per login. Chat `defaults`/`yes` = defaults. Config: `~/.config/gh/pr-default-assignees.json`.
+$PR_ASSIGN_RULE
 MDC
+}
+
+install_claude_doc() {
+  mkdir -p "$HOME/.claude"
+  cat >"$HOME/.claude/PR-ASSIGN-harness.md" <<MD
+# PR assignees (gh-pr-assign-harness)
+
+$PR_ASSIGN_RULE
+
+Roster CLI: \`gh-pr-roster-json\` (fields: \`options\`, \`option_count\`, \`ask_rule\`).
+
+Claude: **AskUserQuestion** multi-select — same rule: every \`options[]\` entry, no subset.
+
+Hooks: PreToolUse asks before create; PostToolUse backfills if \`--assignee\` missing.
+MD
 }
 
 case "${1:-}" in
   --uninstall)
     merge_cursor uninstall
     merge_claude uninstall
-    rm -f "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create" "$HOME/.cursor/rules/gh-pr-default-assignees.mdc"
+    rm -f "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create" "$HOME/.cursor/rules/gh-pr-default-assignees.mdc" "$HOME/.claude/PR-ASSIGN-harness.md"
     echo "Uninstalled hooks. Config: $CFG"
     exit 0
     ;;
   --cursor-only) install_files; merge_cursor install; install_rule; echo "Cursor OK → $DIR"; exit 0 ;;
-  --claude-only) install_files; merge_claude install; echo "Claude OK → $DIR"; exit 0 ;;
+  --claude-only) install_files; merge_claude install; install_claude_doc; echo "Claude OK → $DIR"; exit 0 ;;
   -h|--help) usage; exit 0 ;;
 esac
 
@@ -132,5 +149,6 @@ install_files
 merge_cursor install
 merge_claude install
 install_rule
+install_claude_doc
 echo "Installed $DIR (5-file harness). Config: $CFG"
 echo "Restart Cursor + Claude Code."
