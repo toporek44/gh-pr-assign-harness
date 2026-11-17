@@ -134,18 +134,18 @@ _hook_session_claude() {
     '{ "hookSpecificOutput": { "hookEventName": "SessionStart", "additionalContext": $c } }'
 }
 
-INPUT=$(cat || true)
 case "${1:-hook}" in
   roster) _cmd_roster ;;
   create) shift; _cmd_create "$@" ;;
   hook)
+    INPUT=$(cat || true)
     case "${HARNESS:-cursor}:${HOOK_MODE:-}" in
-      cursor:session) _hook_session_cursor <<<"$INPUT" ;;
-      cursor:ask) _hook_ask_cursor <<<"$INPUT" ;;
-      cursor:after) _hook_after <<<"$INPUT" ;;
-      claude:session) _hook_session_claude <<<"$INPUT" ;;
-      claude:ask) _hook_ask_claude <<<"$INPUT" ;;
-      claude:after) _hook_after <<<"$INPUT" ;;
+      cursor:session) _hook_session_cursor "$INPUT" ;;
+      cursor:ask) _hook_ask_cursor "$INPUT" ;;
+      cursor:after) _hook_after "$INPUT" ;;
+      claude:session) _hook_session_claude "$INPUT" ;;
+      claude:ask) _hook_ask_claude "$INPUT" ;;
+      claude:after) _hook_after "$INPUT" ;;
       *)
         echo "usage: harness.sh roster|create | HARNESS=cursor HOOK_MODE=session|ask|after harness.sh hook" >&2
         exit 1
