@@ -1,151 +1,120 @@
 #!/usr/bin/env bash
-# Install gh-pr-assign-harness into Cursor and/or Claude Code.
 set -euo pipefail
+SRC="$(cd "$(dirname "$0")" && pwd)"
+DIR="${GH_PR_ASSIGN_ROOT:-$HOME/.local/share/gh-pr-assign-harness}"
+BIN="$HOME/.local/bin"
+CFG="$HOME/.config/gh/pr-default-assignees.json"
+CURSOR="$HOME/.cursor/hooks.json"
+CLAUDE="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
+H="$DIR/harness.sh"
 
-SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INSTALL_DIR="${GH_PR_ASSIGN_ROOT:-$HOME/.local/share/gh-pr-assign-harness}"
-CURSOR_HOOKS="$HOME/.cursor/hooks.json"
-CURSOR_RULES="$HOME/.cursor/rules"
-CLAUDE_SETTINGS="${CLAUDE_SETTINGS:-$HOME/.claude/settings.json}"
-CLAUDE_DOCS="${CLAUDE_DOCS:-$HOME/.claude/PR-ASSIGN-harness.md}"
-CONFIG_DIR="$HOME/.config/gh"
-CONFIG_FILE="$CONFIG_DIR/pr-default-assignees.json"
-BIN_DIR="$HOME/.local/bin"
+usage() { echo "Usage: ./install.sh | --uninstall | --cursor-only | --claude-only"; }
 
-INSTALL_CURSOR=1
-INSTALL_CLAUDE=1
-NOTIFY=0
-
-usage() {
-  cat <<'EOF'
-Usage: ./install.sh [options]
-
-  (default)     Install Cursor + Claude Code hooks
-  --cursor-only Install Cursor harness only
-  --claude-only Install Claude Code hooks only
-  --notify      Also enable macOS assign notifications (LaunchAgent)
-  --uninstall   Remove harness hooks from Cursor + Claude
-  -h, --help    This help
+install_files() {
+  mkdir -p "$DIR" "$BIN"
+  install -m 755 "$SRC/harness.sh" "$H"
+  cat >"$BIN/gh-pr-roster-json" <<EOF
+#!/usr/bin/env bash
+exec "$H" roster
 EOF
+  cat >"$BIN/gh-pr-create" <<EOF
+#!/usr/bin/env bash
+exec "$H" create "\$@"
+EOF
+  chmod +x "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create"
+  mkdir -p "$(dirname "$CFG")"
+  [[ -f "$CFG" ]] || cp "$SRC/config.example.json" "$CFG"
 }
 
-install_tree() {
-  mkdir -p "$INSTALL_DIR"
-  rsync -a --delete --exclude .git "$SRC/" "$INSTALL_DIR/"
+merge_cursor() {
+  local mode="${1:-install}"
+  python3 - "$H" "$CURSOR" "$mode" <<'PY'
+import json, sys
+h, path, mode = sys.argv[1:4]
+def cmd(mode):
+    return f"env HARNESS=cursor HOOK_MODE={mode} {h} hook"
+frag = {
+  "sessionStart": [{"command": cmd("session"), "timeout": 5}],
+  "beforeShellExecution": [{"command": cmd("ask"), "matcher": "gh\\s+pr\\s+create", "timeout": 15}],
+  "afterShellExecution": [{"command": cmd("after"), "matcher": "gh\\s+pr\\s+create", "timeout": 45}],
+}
+doc = {"version": 1, "hooks": {}}
+try:
+    with open(path) as f:
+        doc = json.load(f)
+except FileNotFoundError:
+    pass
+doc.setdefault("hooks", {})
+for k, inc in frag.items():
+    ex = doc["hooks"].get(k, [])
+    ex = [e for e in ex if h not in (e.get("command") or "")]
+    if mode != "uninstall":
+        ex.extend(inc)
+    doc["hooks"][k] = ex
+with open(path, "w") as f:
+    json.dump(doc, f, indent=2)
+    f.write("\n")
+PY
 }
 
-link_bins() {
-  mkdir -p "$BIN_DIR"
-  for b in gh-pr-create gh-pr-roster-json gh-pr-assignees-ui; do
-    ln -sf "$INSTALL_DIR/bin/$b" "$BIN_DIR/$b"
-  done
+merge_claude() {
+  local mode="${1:-install}"
+  python3 - "$H" "$CLAUDE" "$mode" <<'PY'
+import json, sys
+h, path, mode = sys.argv[1:4]
+def chook(mode):
+    return {"type": "command", "command": f"env HARNESS=claude HOOK_MODE={mode} {h} hook", "timeout": 20}
+frag = {
+    "SessionStart": [{"matcher": "^(startup|resume|clear|compact|fork)$", "hooks": [chook("session")]}],
+    "PreToolUse": [{"matcher": "Bash", "hooks": [chook("ask")]}],
+    "PostToolUse": [{"matcher": "Bash", "hooks": [chook("after")]}],
+}
+doc = {}
+try:
+    with open(path) as f:
+        doc = json.load(f)
+except FileNotFoundError:
+    pass
+doc.setdefault("hooks", {})
+for k, inc in frag.items():
+    ex = doc["hooks"].get(k, [])
+    ex = [g for g in ex if not any(h in (x.get("command") or "") for x in g.get("hooks", []))]
+    if mode != "uninstall":
+        ex.extend(inc)
+    doc["hooks"][k] = ex
+with open(path, "w") as f:
+    json.dump(doc, f, indent=2)
+    f.write("\n")
+PY
 }
 
-install_config() {
-  mkdir -p "$CONFIG_DIR"
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    cp "$INSTALL_DIR/config/pr-default-assignees.json.example" "$CONFIG_FILE"
-    cp "$INSTALL_DIR/config/pr-default-assignees.schema.json" "$CONFIG_DIR/" 2>/dev/null || true
-  fi
-  if [[ -f "$INSTALL_DIR/profiles/mtopor-box.json" ]] && [[ ! -f "$CONFIG_DIR/pr-default-assignees.local.json" ]]; then
-    cp "$INSTALL_DIR/profiles/mtopor-box.json" "$CONFIG_DIR/pr-default-assignees.local.json.example"
-  fi
-  ln -sf "$INSTALL_DIR/ui/pr-assignees-ui.py" "$CONFIG_DIR/pr-assignees-ui.py" 2>/dev/null || true
+install_rule() {
+  mkdir -p "$HOME/.cursor/rules"
+  cat >"$HOME/.cursor/rules/gh-pr-default-assignees.mdc" <<'MDC'
+---
+description: PR assignees via gh-pr-assign-harness
+alwaysApply: true
+---
+Before `gh pr create`: run `gh-pr-roster-json`, **AskQuestion** (multi), then `--assignee` per login. Chat `defaults`/`yes` = defaults. Config: `~/.config/gh/pr-default-assignees.json`.
+MDC
 }
 
-merge_cursor_hooks() {
-  python3 "$INSTALL_DIR/scripts/merge_cursor_hooks.py" \
-    "$INSTALL_DIR/cursor/hooks.fragment.json" \
-    "$CURSOR_HOOKS" \
-    "$INSTALL_DIR" \
-    "${1:-install}"
-}
+case "${1:-}" in
+  --uninstall)
+    merge_cursor uninstall
+    merge_claude uninstall
+    rm -f "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create" "$HOME/.cursor/rules/gh-pr-default-assignees.mdc"
+    echo "Uninstalled hooks. Config: $CFG"
+    exit 0
+    ;;
+  --cursor-only) install_files; merge_cursor install; install_rule; echo "Cursor OK → $DIR"; exit 0 ;;
+  --claude-only) install_files; merge_claude install; echo "Claude OK → $DIR"; exit 0 ;;
+  -h|--help) usage; exit 0 ;;
+esac
 
-merge_claude_hooks() {
-  python3 "$INSTALL_DIR/scripts/merge_claude_settings.py" \
-    "$INSTALL_DIR/claude/hooks.fragment.json" \
-    "$CLAUDE_SETTINGS" \
-    "$INSTALL_DIR" \
-    "${1:-install}"
-}
-
-install_cursor_rule() {
-  mkdir -p "$CURSOR_RULES"
-  cp "$INSTALL_DIR/cursor/rules/gh-pr-default-assignees.mdc" "$CURSOR_RULES/"
-}
-
-install_claude_instructions() {
-  cp "$INSTALL_DIR/claude/INSTRUCTIONS.md" "$CLAUDE_DOCS"
-}
-
-install_notify() {
-  if [[ "$(uname -s)" != "Darwin" ]]; then
-    echo "notify: macOS only, skipped"
-    return
-  fi
-  plist="$INSTALL_DIR/optional/launchd/gh-assignment-notify.plist"
-  target="$HOME/Library/LaunchAgents/com.gh-pr-assign-harness.notify.plist"
-  sed "s|@INSTALL_DIR@|$INSTALL_DIR|g; s|@HOME@|$HOME|g" "$plist" >"$target"
-  launchctl bootout "gui/$(id -u)/com.gh-pr-assign-harness.notify" 2>/dev/null || true
-  launchctl bootstrap "gui/$(id -u)" "$target" 2>/dev/null || true
-}
-
-uninstall() {
-  [[ "$INSTALL_CURSOR" == 1 ]] && merge_cursor_hooks uninstall
-  [[ "$INSTALL_CLAUDE" == 1 ]] && merge_claude_hooks uninstall
-  rm -f "$BIN_DIR/gh-pr-create" "$BIN_DIR/gh-pr-roster-json" "$BIN_DIR/gh-pr-assignees-ui"
-  rm -f "$CURSOR_RULES/gh-pr-default-assignees.mdc"
-  rm -f "$CLAUDE_DOCS"
-  launchctl bootout "gui/$(id -u)/com.gh-pr-assign-harness.notify" 2>/dev/null || true
-  rm -f "$HOME/Library/LaunchAgents/com.gh-pr-assign-harness.notify.plist"
-  echo "Removed harness. Config kept at $CONFIG_FILE"
-}
-
-parse_args() {
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-      --uninstall)
-        uninstall
-        exit 0
-        ;;
-      --notify) NOTIFY=1 ;;
-      --cursor-only) INSTALL_CLAUDE=0 ;;
-      --claude-only) INSTALL_CURSOR=0 ;;
-      -h | --help)
-        usage
-        exit 0
-        ;;
-      *)
-        echo "unknown option: $1" >&2
-        usage
-        exit 1
-        ;;
-    esac
-    shift
-  done
-}
-
-main() {
-  parse_args "$@"
-  install_tree
-  link_bins
-  install_config
-  if [[ "$INSTALL_CURSOR" == 1 ]]; then
-    merge_cursor_hooks install
-    install_cursor_rule
-    echo "Cursor: merged $CURSOR_HOOKS + rule"
-  fi
-  if [[ "$INSTALL_CLAUDE" == 1 ]]; then
-    merge_claude_hooks install
-    install_claude_instructions
-    echo "Claude Code: merged $CLAUDE_SETTINGS"
-    echo "Claude doc: $CLAUDE_DOCS (link from CLAUDE.md if you want always-on)"
-  fi
-  [[ "$NOTIFY" == 1 ]] && install_notify
-  echo "Installed to $INSTALL_DIR"
-  echo "Config: $CONFIG_FILE"
-  echo "Test: gh-pr-roster-json | jq '.options[0]'"
-  echo "Restart Cursor and/or Claude Code."
-}
-
-main "$@"
+install_files
+merge_cursor install
+merge_claude install
+install_rule
+echo "Installed $DIR (5-file harness). Config: $CFG"
+echo "Restart Cursor + Claude Code."

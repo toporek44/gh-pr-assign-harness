@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-exec /usr/bin/python3 "${HOME}/.local/share/gh-pr-assign-harness/ui/pr-assignees-ui.py" "$@" 2>/dev/null \
-  || exec /usr/bin/python3 "$(cd "$(dirname "$0")/.." && pwd)/ui/pr-assignees-ui.py" "$@"

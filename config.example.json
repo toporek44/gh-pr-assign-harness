@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default_gh_host": "git.dev.box.net",
+  "agent_ask_before_pr_create": true,
+  "agent_ask_message": "Who should be assigned to this PR?",
+  "shell_ask_before_pr_create": false,
+  "default_assignees": ["lsantos", "nsemianiuk"],
+  "teammates": [
+    { "login": "lsantos", "name": "Luciano Santos" },
+    { "login": "nsemianiuk", "name": "Natallia Semianiuk" }
+  ],
+  "hosts": {
+    "git.dev.box.net": { "assignees": ["lsantos", "nsemianiuk"] },
+    "github.com": { "assignees": [] }
+  }
+}
