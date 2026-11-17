@@ -5,10 +5,12 @@ Portable **Cursor harness** hooks for PR assignees: in-chat teammate picker (def
 ## Install (one command)
 
 ```bash
-git clone https://github.com/mtopor/gh-pr-assign-harness.git
+git clone git@git.dev.box.net:mtopor/gh-pr-assign-harness.git
 cd gh-pr-assign-harness
 ./install.sh
 ```
+
+Public mirror: [github.com/toporek44/gh-pr-assign-harness](https://github.com/toporek44/gh-pr-assign-harness)
 
 Restart Cursor after install.
 
