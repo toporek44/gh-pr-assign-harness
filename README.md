@@ -1,8 +1,8 @@
 # gh-pr-assign-harness
 
-Portable **Cursor harness** hooks for PR assignees: in-chat teammate picker (defaults first), `gh` wrappers, and optional macOS assign notifications.
+Portable hooks for **Cursor** and **Claude Code**: in-chat assignee picker, `gh` wrappers, optional macOS notifications.
 
-## Install (one command)
+## Install
 
 ```bash
 git clone git@git.dev.box.net:mtopor/gh-pr-assign-harness.git
@@ -10,55 +10,33 @@ cd gh-pr-assign-harness
 ./install.sh
 ```
 
-Optional mirror: [github.com/toporek44/gh-pr-assign-harness](https://github.com/toporek44/gh-pr-assign-harness) (not needed for Box-only `mtopor` setup).
+Installs **both** harnesses by default. See `harness/README.md` for flags.
 
-**This machine (Box `mtopor` only):** set `default_gh_host`, `my_gh_login`, and `notify_hosts` in config, or merge `profiles/mtopor-box.json` fields after install.
+- Files: `~/.local/share/gh-pr-assign-harness`
+- Config: `~/.config/gh/pr-default-assignees.json` (from `config/*.example` on first run)
+- Box profile hints: `profiles/mtopor-box.json`
 
-Restart Cursor after install.
+Mirror: [github.com/toporek44/gh-pr-assign-harness](https://github.com/toporek44/gh-pr-assign-harness)
 
-Install location: `~/.local/share/gh-pr-assign-harness` (override with `GH_PR_ASSIGN_ROOT`).
+Restart **Cursor** and **Claude Code** after install.
 
-## What you get
+## Behavior
 
-| Piece | Purpose |
-|--------|---------|
-| `gh-pr-roster-json` | JSON for agent `AskQuestion` (defaults + team list) |
-| `gh-pr-create` | `gh pr create` with default assignees |
-| `gh-pr-assignees-ui` | Optional desktop editor for config (macOS system Python) |
-| Cursor hooks | session context, assign backfill, optional shell gate |
-| Cursor rule | Agent asks in chat before PR create |
+1. Agent runs `gh-pr-roster-json` → **AskQuestion** / AskUserQuestion (defaults first, `__use_defaults__` one-tap).
+2. **Pre** hook asks before `gh pr create` if agent skipped chat.
+3. **Post** hook adds default assignees when create had no `--assignee`.
 
-Config: `~/.config/gh/pr-default-assignees.json` (created from `config/pr-default-assignees.json.example` on first install).
+## Binaries
 
-## Harness hook (Cursor)
-
-`install.sh` merges `cursor/hooks.fragment.json` into `~/.cursor/hooks.json` without removing your other hooks.
-
-Manual merge: copy paths from the fragment and point at `$GH_PR_ASSIGN_ROOT/hooks/...`.
-
-## Agent flow
-
-1. User asks to open a PR.
-2. Agent runs `gh-pr-roster-json`, shows `AskQuestion` (`allow_multiple: true`).
-3. First option: **Use defaults only** (`__use_defaults__`).
-4. Teammates below; defaults listed first with `(Recommended — default)`.
-5. User can reply `defaults` / `yes` in chat instead of the form.
-6. Agent runs `gh pr create` with `--assignee` for each login.
+| Command | Role |
+|---------|------|
+| `gh-pr-roster-json` | Picker JSON for agents |
+| `gh-pr-create` | `gh pr create` + config assignees |
+| `gh-pr-assignees-ui` | Optional roster editor (macOS) |
 
 ## Customize
 
-- Edit JSON or run `gh-pr-assignees-ui`.
-- `teammates`: picker roster (`login` + `name`).
-- `default_assignees`: default assignees and picker order at top.
-- `shell_ask_before_pr_create`: `false` by default (stay in chat).
-
-## Optional: assigned-to-you notifications (macOS)
-
-```bash
-./install.sh --notify
-```
-
-Loads LaunchAgent `optional/launchd/gh-assignment-notify.plist` (5-minute poll).
+Edit config or `gh-pr-assignees-ui`. Fields: `default_assignees`, `teammates`, `default_gh_host`, `agent_ask_before_pr_create`.
 
 ## Uninstall
 
@@ -66,9 +44,4 @@ Loads LaunchAgent `optional/launchd/gh-assignment-notify.plist` (5-minute poll).
 ./install.sh --uninstall
 ```
 
-Removes merged hook entries and symlinks under `~/.local/bin`; does not delete your config JSON.
-
-## Requirements
-
-- `gh`, `jq`, `bash`
-- Cursor with user hooks (`~/.cursor/hooks.json`)
+Config JSON is kept.

@@ -1,0 +1,38 @@
+{
+  "SessionStart": [
+    {
+      "matcher": "^(startup|resume|clear|compact|fork)$",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "@INSTALL_DIR@/adapters/claude-session-start.sh",
+          "timeout": 10
+        }
+      ]
+    }
+  ],
+  "PreToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "@INSTALL_DIR@/adapters/claude-pre-gh-pr-create.sh",
+          "timeout": 15
+        }
+      ]
+    }
+  ],
+  "PostToolUse": [
+    {
+      "matcher": "Bash",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "@INSTALL_DIR@/adapters/claude-post-gh-pr-create.sh",
+          "timeout": 45
+        }
+      ]
+    }
+  ]
+}
