@@ -21,7 +21,7 @@ hosts=()
 if [[ -f "$CONFIG" ]]; then
   while IFS= read -r line; do hosts+=("$line"); done < <(jq -r '.notify_hosts[]? | .host + ":" + .login' "$CONFIG" 2>/dev/null || true)
 fi
-if ((${#hosts[@]} == 0)); then hosts=("git.dev.box.net:mtopor" "github.com:toporek44"); fi
+if ((${#hosts[@]} == 0)); then hosts=("git.dev.box.net:mtopor"); fi
 collect() { GH_HOST="$1"; gh api notifications 2>/dev/null | jq -c '.[] | select(.reason == "assign")' 2>/dev/null || true; }
 if [[ ! -f "$SEED_FILE" ]]; then
   seed=()

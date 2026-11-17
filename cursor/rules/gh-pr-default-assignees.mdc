@@ -11,5 +11,5 @@ Harness: `gh-pr-roster-json`, config `~/.config/gh/pr-default-assignees.json`.
 2. First option `__use_defaults__` = one-tap defaults only.
 3. Chat shortcuts `defaults` / `yes` → use `defaults` array from roster.
 4. Map ids to `--assignee` (never pass `__use_defaults__` to gh).
-5. `export GH_HOST=git.dev.box.net` on Box GHE when needed.
+5. Use `default_gh_host` from config (`git.dev.box.net` on Box). Set `GH_HOST` only when overriding.
 6. Do not open desktop UI during normal PR flow unless user asks to edit roster.

@@ -1,0 +1,9 @@
+{
+  "default_gh_host": "git.dev.box.net",
+  "my_gh_login": "mtopor",
+  "notify_hosts": [{ "host": "git.dev.box.net", "login": "mtopor" }],
+  "hosts": {
+    "git.dev.box.net": { "assignees": ["lsantos", "nsemianiuk"] },
+    "github.com": { "assignees": [] }
+  }
+}

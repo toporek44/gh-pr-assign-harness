@@ -4,7 +4,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=../lib/gh-pr-assign-common.sh
 source "$ROOT/lib/gh-pr-assign-common.sh"
 if [[ " $* " == *" --assignee "* ]]; then exec gh pr create "$@"; fi
-host="${GH_HOST:-github.com}"
+host="$(gh_pr_default_host)"
 assignee_args=()
 while IFS= read -r flag; do [[ -n "$flag" ]] && assignee_args+=("$flag"); done < <(gh_pr_build_assignee_args "$host")
 exec gh pr create "$@" "${assignee_args[@]}"

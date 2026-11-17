@@ -9,9 +9,9 @@
     { "login": "teammate-a", "name": "Teammate A" },
     { "login": "teammate-b", "name": "Teammate B" }
   ],
-  "notify_hosts": [
-    { "host": "github.com", "login": "your-github-login" }
-  ],
+  "default_gh_host": "git.dev.box.net",
+  "my_gh_login": "your-ghe-login",
+  "notify_hosts": [{ "host": "git.dev.box.net", "login": "your-ghe-login" }],
   "hosts": {
     "github.com": { "assignees": [] },
     "git.dev.box.net": { "assignees": ["teammate-a", "teammate-b"] }

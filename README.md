@@ -10,7 +10,9 @@ cd gh-pr-assign-harness
 ./install.sh
 ```
 
-Public mirror: [github.com/toporek44/gh-pr-assign-harness](https://github.com/toporek44/gh-pr-assign-harness)
+Optional mirror: [github.com/toporek44/gh-pr-assign-harness](https://github.com/toporek44/gh-pr-assign-harness) (not needed for Box-only `mtopor` setup).
+
+**This machine (Box `mtopor` only):** set `default_gh_host`, `my_gh_login`, and `notify_hosts` in config, or merge `profiles/mtopor-box.json` fields after install.
 
 Restart Cursor after install.
 

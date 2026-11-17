@@ -1,6 +1,22 @@
 # shellcheck shell=bash
 GH_PR_ASSIGNEES_CONFIG="${GH_PR_ASSIGNEES_CONFIG:-$HOME/.config/gh/pr-default-assignees.json}"
 
+gh_pr_default_host() {
+  if [[ -n "${GH_HOST:-}" ]]; then
+    printf '%s\n' "$GH_HOST"
+    return 0
+  fi
+  if [[ -f "$GH_PR_ASSIGNEES_CONFIG" ]] && command -v jq >/dev/null 2>&1; then
+    local h
+    h=$(jq -r '.default_gh_host // empty' "$GH_PR_ASSIGNEES_CONFIG")
+    if [[ -n "$h" && "$h" != "null" ]]; then
+      printf '%s\n' "$h"
+      return 0
+    fi
+  fi
+  printf '%s\n' "github.com"
+}
+
 gh_pr_assignees_for_host() {
   local host="${1:-github.com}"
   if [[ ! -f "$GH_PR_ASSIGNEES_CONFIG" ]]; then
