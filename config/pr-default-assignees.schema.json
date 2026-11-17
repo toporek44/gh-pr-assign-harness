@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PR default assignees",
+  "type": "object",
+  "properties": {
+    "version": { "type": "integer" },
+    "agent_ask_before_pr_create": { "type": "boolean" },
+    "agent_ask_message": { "type": "string" },
+    "shell_ask_before_pr_create": { "type": "boolean" },
+    "default_assignees": { "type": "array", "items": { "type": "string" } },
+    "teammates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "login": { "type": "string" },
+          "name": { "type": "string" }
+        },
+        "required": ["login"]
+      }
+    },
+    "notify_hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "host": { "type": "string" },
+          "login": { "type": "string" }
+        }
+      }
+    },
+    "hosts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "assignees": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "./pr-default-assignees.schema.json",
+  "version": 1,
+  "agent_ask_before_pr_create": true,
+  "agent_ask_message": "Who should be assigned to this PR?",
+  "shell_ask_before_pr_create": false,
+  "default_assignees": ["teammate-a", "teammate-b"],
+  "teammates": [
+    { "login": "teammate-a", "name": "Teammate A" },
+    { "login": "teammate-b", "name": "Teammate B" }
+  ],
+  "notify_hosts": [
+    { "host": "github.com", "login": "your-github-login" }
+  ],
+  "hosts": {
+    "github.com": { "assignees": [] },
+    "git.dev.box.net": { "assignees": ["teammate-a", "teammate-b"] }
+  }
+}
