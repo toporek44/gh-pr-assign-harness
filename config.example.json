@@ -6,8 +6,15 @@
   "shell_ask_before_pr_create": false,
   "default_assignees": ["lsantos", "nsemianiuk"],
   "teammates": [
+    { "login": "dbadurek", "name": "Dawid Badurek" },
+    { "login": "ifryn", "name": "Izabela Fryn" },
     { "login": "lsantos", "name": "Luciano Santos" },
-    { "login": "nsemianiuk", "name": "Natallia Semianiuk" }
+    { "login": "mcieslar", "name": "Maciej Cieslar" },
+    { "login": "mtopor", "name": "Maciej Topor" },
+    { "login": "marcinsikorski", "name": "Marcin Sikorski" },
+    { "login": "mkleska", "name": "Mateusz Kleska" },
+    { "login": "nsemianiuk", "name": "Natallia Semianiuk" },
+    { "login": "pbieszke", "name": "Patryk Bieszke" }
   ],
   "hosts": {
     "git.dev.box.net": { "assignees": ["lsantos", "nsemianiuk"] },

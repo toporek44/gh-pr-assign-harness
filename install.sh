@@ -28,14 +28,6 @@ install_files() {
     echo "install: $H looks broken ($lines lines). Run install from git clone, not from \$DIR." >&2
     exit 1
   fi
-  cat >"$BIN/gh-pr-roster-json" <<EOF
-#!/usr/bin/env bash
-exec "$H" roster
-EOF
-  cat >"$BIN/gh-pr-create" <<EOF
-#!/usr/bin/env bash
-exec "$H" create "\$@"
-EOF
   rm -f "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create"
   cat >"$BIN/gh-pr-roster-json" <<EOF
 #!/usr/bin/env bash
