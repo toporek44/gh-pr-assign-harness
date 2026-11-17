@@ -2,6 +2,11 @@
 set -euo pipefail
 SRC="$(cd "$(dirname "$0")" && pwd)"
 DIR="${GH_PR_ASSIGN_ROOT:-$HOME/.local/share/gh-pr-assign-harness}"
+# Never install from a broken copy under $DIR — use the git clone that contains this script.
+if [[ "$(cd "$(dirname "$0")" && pwd)" == "$DIR" ]] && [[ "$(wc -l <"$DIR/harness.sh" 2>/dev/null || echo 0)" -lt 20 ]]; then
+  echo "Run: git clone ... && cd gh-pr-assign-harness && ./install.sh" >&2
+  exit 1
+fi
 BIN="$HOME/.local/bin"
 CFG="$HOME/.config/gh/pr-default-assignees.json"
 CURSOR="$HOME/.cursor/hooks.json"
@@ -12,7 +17,26 @@ usage() { echo "Usage: ./install.sh | --uninstall | --cursor-only | --claude-onl
 
 install_files() {
   mkdir -p "$DIR" "$BIN"
-  install -m 755 "$SRC/harness.sh" "$H"
+  for f in harness.sh install.sh config.example.json README.md; do
+    [[ -f "$SRC/$f" ]] || continue
+    if [[ "$f" == *.sh ]]; then install -m 755 "$SRC/$f" "$DIR/$f"
+    else install -m 644 "$SRC/$f" "$DIR/$f"; fi
+  done
+  H="$DIR/harness.sh"
+  lines=$(wc -l <"$H" | tr -d ' ')
+  if (( lines < 20 )); then
+    echo "install: $H looks broken ($lines lines). Run install from git clone, not from \$DIR." >&2
+    exit 1
+  fi
+  cat >"$BIN/gh-pr-roster-json" <<EOF
+#!/usr/bin/env bash
+exec "$H" roster
+EOF
+  cat >"$BIN/gh-pr-create" <<EOF
+#!/usr/bin/env bash
+exec "$H" create "\$@"
+EOF
+  rm -f "$BIN/gh-pr-roster-json" "$BIN/gh-pr-create"
   cat >"$BIN/gh-pr-roster-json" <<EOF
 #!/usr/bin/env bash
 exec "$H" roster
